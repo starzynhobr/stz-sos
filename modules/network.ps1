@@ -1,11 +1,179 @@
+function Get-STZActiveNetworkAdapters {
+    return Get-NetIPConfiguration -ErrorAction Stop | Where-Object {
+        $_.NetAdapter.Status -eq 'Up'
+    }
+}
+
+function Get-STZNetworkGatewayHint {
+    $adapter = Get-STZActiveNetworkAdapters | Select-Object -First 1
+    if ($adapter -and $adapter.IPv4DefaultGateway -and $adapter.IPv4DefaultGateway.NextHop) {
+        return $adapter.IPv4DefaultGateway.NextHop
+    }
+
+    return $null
+}
+
+function Test-STZPingTarget {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Target
+    )
+
+    try {
+        return Test-Connection -TargetName $Target -Count 1 -Quiet -ErrorAction Stop
+    }
+    catch {
+        return $false
+    }
+}
+
+function Test-STZDnsResolution {
+    param(
+        [Parameter(Mandatory)]
+        [string]$HostName
+    )
+
+    try {
+        $null = Resolve-DnsName -Name $HostName -ErrorAction Stop
+        return $true
+    }
+    catch {
+        return $false
+    }
+}
+
+function Invoke-STZQuickNetworkRepair {
+    $action = New-STZActionDefinition `
+        -Title 'Quick Network Repair' `
+        -Description 'Refreshes common DNS and IP lease state to recover routine connectivity problems.' `
+        -RequiresAdmin $true `
+        -RebootRecommended $false `
+        -RiskLevel 'Low' `
+        -SuccessMessage 'Quick network repair completed successfully.' `
+        -Handler {
+            Show-STZLoading -Text 'Flushing DNS resolver cache'
+            ipconfig /flushdns | Out-Null
+
+            Show-STZLoading -Text 'Releasing IP leases'
+            ipconfig /release | Out-Null
+
+            Show-STZLoading -Text 'Renewing IP leases'
+            ipconfig /renew | Out-Null
+
+            Show-STZLoading -Text 'Registering DNS records'
+            ipconfig /registerdns | Out-Null
+        }
+
+    Invoke-STZAction -Action $action
+}
+
 function Repair-STZNetworkStack {
-    Show-STZLoading -Text 'Purgando tabela DNS'
-    ipconfig /flushdns | Out-Null
+    Invoke-STZQuickNetworkRepair
+}
 
-    Show-STZLoading -Text 'Renovando concessoes de IP'
-    ipconfig /release | Out-Null
-    ipconfig /renew | Out-Null
+function Invoke-STZDeepNetworkRepair {
+    $action = New-STZActionDefinition `
+        -Title 'Deep Network Repair' `
+        -Description 'Resets Winsock and TCP/IP state, then refreshes DNS and IP lease information.' `
+        -RequiresAdmin $true `
+        -RebootRecommended $true `
+        -RiskLevel 'Medium' `
+        -SuccessMessage 'Deep network repair completed successfully.' `
+        -Handler {
+            Show-STZLoading -Text 'Resetting Winsock catalog'
+            netsh winsock reset | Out-Null
 
-    Write-Host "`n$($script:STZUI.AccentColor) [✓] Protocolos de rede reestabelecidos.$($script:STZUI.Reset)"
-    Wait-STZPause
+            Show-STZLoading -Text 'Resetting TCP/IP stack'
+            netsh int ip reset | Out-Null
+
+            Show-STZLoading -Text 'Flushing DNS resolver cache'
+            ipconfig /flushdns | Out-Null
+
+            Show-STZLoading -Text 'Releasing IP leases'
+            ipconfig /release | Out-Null
+
+            Show-STZLoading -Text 'Renewing IP leases'
+            ipconfig /renew | Out-Null
+        }
+
+    Invoke-STZAction -Action $action
+}
+
+function Show-STZNetworkReport {
+    $action = New-STZActionDefinition `
+        -Title 'Network Report' `
+        -Description 'Displays a compact snapshot of active adapters, IPv4, gateway, DNS, and internet hint.' `
+        -RequiresAdmin $false `
+        -RebootRecommended $false `
+        -RiskLevel 'Low' `
+        -SuccessMessage 'Network report generated successfully.' `
+        -Handler {
+            $adapters = Get-STZActiveNetworkAdapters
+            $internetHint = if ((Test-STZPingTarget -Target '8.8.8.8') -or (Test-STZDnsResolution -HostName 'google.com')) {
+                'Likely online'
+            }
+            else {
+                'Offline or restricted'
+            }
+
+            Write-Host "`n$($script:STZUI.MutedColor) --- NETWORK REPORT ---$($script:STZUI.Reset)"
+
+            if (-not $adapters) {
+                Write-Host "$($script:STZUI.WarningColor) No active adapters detected.$($script:STZUI.Reset)"
+            }
+
+            foreach ($adapter in $adapters) {
+                $ipv4 = if ($adapter.IPv4Address) { ($adapter.IPv4Address | ForEach-Object { $_.IPAddress }) -join ', ' } else { 'N/A' }
+                $gateway = if ($adapter.IPv4DefaultGateway) { ($adapter.IPv4DefaultGateway | ForEach-Object { $_.NextHop }) -join ', ' } else { 'N/A' }
+                $dns = if ($adapter.DnsServer.ServerAddresses) { ($adapter.DnsServer.ServerAddresses -join ', ') } else { 'N/A' }
+
+                Write-Host "$($script:STZUI.NeonColor) Adapter:$($script:STZUI.TextColor) $($adapter.InterfaceAlias)$($script:STZUI.Reset)"
+                Write-Host "$($script:STZUI.NeonColor) IPv4:$($script:STZUI.TextColor) $ipv4$($script:STZUI.Reset)"
+                Write-Host "$($script:STZUI.NeonColor) Gateway:$($script:STZUI.TextColor) $gateway$($script:STZUI.Reset)"
+                Write-Host "$($script:STZUI.NeonColor) DNS:$($script:STZUI.TextColor) $dns$($script:STZUI.Reset)"
+                Write-Host "$($script:STZUI.MutedColor) ----------------------$($script:STZUI.Reset)"
+            }
+
+            Write-Host "$($script:STZUI.NeonColor) Internet Hint:$($script:STZUI.TextColor) $internetHint$($script:STZUI.Reset)"
+        }
+
+    Invoke-STZAction -Action $action
+}
+
+function Test-STZConnectivity {
+    $action = New-STZActionDefinition `
+        -Title 'Connectivity Test' `
+        -Description 'Runs a short reachability and DNS test against local and external targets.' `
+        -RequiresAdmin $false `
+        -RebootRecommended $false `
+        -RiskLevel 'Low' `
+        -SuccessMessage 'Connectivity test completed successfully.' `
+        -Handler {
+            $gateway = Get-STZNetworkGatewayHint
+            $gatewayResult = if ($gateway) {
+                if (Test-STZPingTarget -Target $gateway) { 'Reachable' } else { 'Unreachable' }
+            }
+            else {
+                'Not available'
+            }
+
+            $dnsResult = if (Test-STZDnsResolution -HostName 'google.com') { 'Resolved' } else { 'Failed' }
+            $ipResult = if (Test-STZPingTarget -Target '8.8.8.8') { 'Reachable' } else { 'Unreachable' }
+            $hostResult = if (Test-STZPingTarget -Target 'google.com') { 'Reachable' } else { 'Unreachable' }
+
+            Write-Host "`n$($script:STZUI.MutedColor) --- CONNECTIVITY TEST ---$($script:STZUI.Reset)"
+            Write-Host "$($script:STZUI.NeonColor) Local Gateway:$($script:STZUI.TextColor) $gatewayResult$($script:STZUI.Reset)"
+            if ($gateway) {
+                Write-Host "$($script:STZUI.MutedColor) Target: $gateway$($script:STZUI.Reset)"
+            }
+            Write-Host "$($script:STZUI.NeonColor) DNS Resolution:$($script:STZUI.TextColor) $dnsResult$($script:STZUI.Reset)"
+            Write-Host "$($script:STZUI.MutedColor) Target: google.com$($script:STZUI.Reset)"
+            Write-Host "$($script:STZUI.NeonColor) External IP:$($script:STZUI.TextColor) $ipResult$($script:STZUI.Reset)"
+            Write-Host "$($script:STZUI.MutedColor) Target: 8.8.8.8$($script:STZUI.Reset)"
+            Write-Host "$($script:STZUI.NeonColor) External Host:$($script:STZUI.TextColor) $hostResult$($script:STZUI.Reset)"
+            Write-Host "$($script:STZUI.MutedColor) Target: google.com$($script:STZUI.Reset)"
+            Write-Host "$($script:STZUI.MutedColor) -------------------------$($script:STZUI.Reset)"
+        }
+
+    Invoke-STZAction -Action $action
 }

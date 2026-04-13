@@ -60,7 +60,7 @@ function Resolve-STZDependencies {
         $localSources = foreach ($file in $files) {
             $fullPath = Join-Path $root $file
             if (-not (Test-Path $fullPath)) {
-                throw "Arquivo obrigatorio ausente: $file"
+                throw "Required file is missing: $file"
             }
 
             [pscustomobject]@{
@@ -102,7 +102,7 @@ catch {
 }
 
 if (-not (Get-Command Start-STZSOS -ErrorAction SilentlyContinue)) {
-    Write-STZBootstrapError -Message 'Falha ao inicializar a funcao principal Start-STZSOS.'
+    Write-STZBootstrapError -Message 'Failed to initialize the main Start-STZSOS function.'
     return
 }
 

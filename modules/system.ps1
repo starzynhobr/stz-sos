@@ -1,11 +1,17 @@
 function Invoke-STZDiskCleanup {
-    Show-STZLoading -Text 'Limpando arquivos temporarios'
+    $action = New-STZActionDefinition `
+        -Title 'Disk Cleanup' `
+        -Description 'Purges temporary files and cached data from standard Windows temp locations.' `
+        -RequiresAdmin $true `
+        -RebootRecommended $false `
+        -RiskLevel 'Low' `
+        -SuccessMessage 'Temporary files were purged successfully.' `
+        -Handler {
+            Remove-Item -Path "$env:TEMP\*" -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item -Path "$env:WINDIR\Temp\*" -Recurse -Force -ErrorAction Stop
+        }
 
-    Remove-Item -Path "$env:TEMP\*" -Recurse -Force -ErrorAction SilentlyContinue
-    Remove-Item -Path "$env:WINDIR\Temp\*" -Recurse -Force -ErrorAction SilentlyContinue
-
-    Write-Host "`n$($script:STZUI.AccentColor) [✓] Cache do sistema purgado com sucesso.$($script:STZUI.Reset)"
-    Wait-STZPause
+    Invoke-STZAction -Action $action
 }
 
 function Get-STZHardwareReport {
@@ -21,13 +27,22 @@ function Get-STZHardwareReport {
 }
 
 function Show-STZHardwareReport {
-    Show-STZLoading -Text 'Buscando telemetria de hardware'
-    $report = Get-STZHardwareReport
+    $action = New-STZActionDefinition `
+        -Title 'Hardware Report' `
+        -Description 'Collects a basic CPU, RAM, and GPU summary for the current machine.' `
+        -RequiresAdmin $false `
+        -RebootRecommended $false `
+        -RiskLevel 'Low' `
+        -SuccessMessage 'Hardware report generated successfully.' `
+        -Handler {
+            $report = Get-STZHardwareReport
 
-    Write-Host "`n$($script:STZUI.MutedColor) --- SPEC REPORT ---$($script:STZUI.Reset)"
-    Write-Host "$($script:STZUI.NeonColor) CPU:$($script:STZUI.TextColor) $($report.CPU)$($script:STZUI.Reset)"
-    Write-Host "$($script:STZUI.NeonColor) RAM:$($script:STZUI.TextColor) $($report.RAM)$($script:STZUI.Reset)"
-    Write-Host "$($script:STZUI.NeonColor) GPU:$($script:STZUI.TextColor) $($report.GPU)$($script:STZUI.Reset)"
-    Write-Host "$($script:STZUI.MutedColor) -------------------$($script:STZUI.Reset)"
-    Wait-STZPause
+            Write-Host "`n$($script:STZUI.MutedColor) --- SPEC REPORT ---$($script:STZUI.Reset)"
+            Write-Host "$($script:STZUI.NeonColor) CPU:$($script:STZUI.TextColor) $($report.CPU)$($script:STZUI.Reset)"
+            Write-Host "$($script:STZUI.NeonColor) RAM:$($script:STZUI.TextColor) $($report.RAM)$($script:STZUI.Reset)"
+            Write-Host "$($script:STZUI.NeonColor) GPU:$($script:STZUI.TextColor) $($report.GPU)$($script:STZUI.Reset)"
+            Write-Host "$($script:STZUI.MutedColor) -------------------$($script:STZUI.Reset)"
+        }
+
+    Invoke-STZAction -Action $action
 }
