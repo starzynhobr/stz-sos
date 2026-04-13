@@ -1,4 +1,4 @@
-$script:STZSOSRemoteBase = 'https://stzlabs.com/sos'
+$script:STZSOSRemoteBase = 'https://raw.githubusercontent.com/starzynhobr/stz-sos/main'
 $script:STZSOSProjectRoot = $null
 
 function Get-STZBootstrapRoot {
