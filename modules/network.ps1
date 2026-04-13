@@ -42,9 +42,11 @@ function Test-STZDnsResolution {
     }
 }
 
-function Invoke-STZQuickNetworkRepair {
-    $action = New-STZActionDefinition `
+function Get-STZQuickNetworkRepairAction {
+    return New-STZActionDefinition `
+        -Key '1' `
         -Title 'Quick Network Repair' `
+        -MenuLabel 'Quick Network Repair (flush DNS / renew IP)' `
         -Description 'Refreshes common DNS and IP lease state to recover routine connectivity problems.' `
         -RequiresAdmin $true `
         -RebootRecommended $false `
@@ -63,17 +65,21 @@ function Invoke-STZQuickNetworkRepair {
             Show-STZLoading -Text 'Registering DNS records'
             ipconfig /registerdns | Out-Null
         }
+}
 
-    Invoke-STZAction -Action $action
+function Invoke-STZQuickNetworkRepair {
+    Invoke-STZAction -Action (Get-STZQuickNetworkRepairAction)
 }
 
 function Repair-STZNetworkStack {
     Invoke-STZQuickNetworkRepair
 }
 
-function Invoke-STZDeepNetworkRepair {
-    $action = New-STZActionDefinition `
+function Get-STZDeepNetworkRepairAction {
+    return New-STZActionDefinition `
+        -Key '2' `
         -Title 'Deep Network Repair' `
+        -MenuLabel 'Deep Network Repair (reset Winsock / TCP-IP)' `
         -Description 'Resets Winsock and TCP/IP state, then refreshes DNS and IP lease information.' `
         -RequiresAdmin $true `
         -RebootRecommended $true `
@@ -95,13 +101,17 @@ function Invoke-STZDeepNetworkRepair {
             Show-STZLoading -Text 'Renewing IP leases'
             ipconfig /renew | Out-Null
         }
-
-    Invoke-STZAction -Action $action
 }
 
-function Show-STZNetworkReport {
-    $action = New-STZActionDefinition `
+function Invoke-STZDeepNetworkRepair {
+    Invoke-STZAction -Action (Get-STZDeepNetworkRepairAction)
+}
+
+function Get-STZNetworkReportAction {
+    return New-STZActionDefinition `
+        -Key '3' `
         -Title 'Network Report' `
+        -MenuLabel 'Show Network Report (IP / DNS / gateway)' `
         -Description 'Displays a compact snapshot of active adapters, IPv4, gateway, DNS, and internet hint.' `
         -RequiresAdmin $false `
         -RebootRecommended $false `
@@ -136,13 +146,17 @@ function Show-STZNetworkReport {
 
             Write-Host "$($script:STZUI.NeonColor) Internet Hint:$($script:STZUI.TextColor) $internetHint$($script:STZUI.Reset)"
         }
-
-    Invoke-STZAction -Action $action
 }
 
-function Test-STZConnectivity {
-    $action = New-STZActionDefinition `
+function Show-STZNetworkReport {
+    Invoke-STZAction -Action (Get-STZNetworkReportAction)
+}
+
+function Get-STZConnectivityTestAction {
+    return New-STZActionDefinition `
+        -Key '4' `
         -Title 'Connectivity Test' `
+        -MenuLabel 'Test Connectivity (gateway / DNS / internet)' `
         -Description 'Runs a short reachability and DNS test against local and external targets.' `
         -RequiresAdmin $false `
         -RebootRecommended $false `
@@ -174,6 +188,17 @@ function Test-STZConnectivity {
             Write-Host "$($script:STZUI.MutedColor) Target: google.com$($script:STZUI.Reset)"
             Write-Host "$($script:STZUI.MutedColor) -------------------------$($script:STZUI.Reset)"
         }
+}
 
-    Invoke-STZAction -Action $action
+function Test-STZConnectivity {
+    Invoke-STZAction -Action (Get-STZConnectivityTestAction)
+}
+
+function Get-STZNetworkMenuActions {
+    return @(
+        Get-STZQuickNetworkRepairAction
+        Get-STZDeepNetworkRepairAction
+        Get-STZNetworkReportAction
+        Get-STZConnectivityTestAction
+    )
 }

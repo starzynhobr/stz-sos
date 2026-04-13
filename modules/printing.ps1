@@ -39,9 +39,11 @@ function Invoke-STZPrintQueueCleanup {
     Start-STZPrintSpooler
 }
 
-function Show-STZPrintSpoolerStatus {
-    $action = New-STZActionDefinition `
+function Get-STZPrintSpoolerStatusAction {
+    return New-STZActionDefinition `
+        -Key '1' `
         -Title 'Print Spooler Status' `
+        -MenuLabel 'Show Spooler Status (service / startup type)' `
         -Description 'Displays the current Spooler service state and startup mode.' `
         -RequiresAdmin $false `
         -RebootRecommended $false `
@@ -57,13 +59,17 @@ function Show-STZPrintSpoolerStatus {
             Write-Host "$($script:STZUI.NeonColor) Start Type:$($script:STZUI.TextColor) $startType$($script:STZUI.Reset)"
             Write-Host "$($script:STZUI.MutedColor) ----------------------$($script:STZUI.Reset)"
         }
-
-    Invoke-STZAction -Action $action
 }
 
-function Restart-STZPrintSpooler {
-    $action = New-STZActionDefinition `
+function Show-STZPrintSpoolerStatus {
+    Invoke-STZAction -Action (Get-STZPrintSpoolerStatusAction)
+}
+
+function Get-STZRestartPrintSpoolerAction {
+    return New-STZActionDefinition `
+        -Key '2' `
         -Title 'Restart Print Spooler' `
+        -MenuLabel 'Restart Print Spooler (stop / start service)' `
         -Description 'Stops and starts the Windows Print Spooler service.' `
         -RequiresAdmin $true `
         -RebootRecommended $false `
@@ -73,13 +79,17 @@ function Restart-STZPrintSpooler {
             Stop-STZPrintSpooler
             Start-STZPrintSpooler
         }
-
-    Invoke-STZAction -Action $action
 }
 
-function Clear-STZPrintQueue {
-    $action = New-STZActionDefinition `
+function Restart-STZPrintSpooler {
+    Invoke-STZAction -Action (Get-STZRestartPrintSpoolerAction)
+}
+
+function Get-STZClearPrintQueueAction {
+    return New-STZActionDefinition `
+        -Key '3' `
         -Title 'Clear Print Queue' `
+        -MenuLabel 'Clear Print Queue (purge pending jobs)' `
         -Description 'Stops the spooler, clears queued print jobs, and starts the service again.' `
         -RequiresAdmin $true `
         -RebootRecommended $false `
@@ -88,13 +98,17 @@ function Clear-STZPrintQueue {
         -Handler {
             Invoke-STZPrintQueueCleanup
         }
-
-    Invoke-STZAction -Action $action
 }
 
-function Repair-STZPrintStack {
-    $action = New-STZActionDefinition `
+function Clear-STZPrintQueue {
+    Invoke-STZAction -Action (Get-STZClearPrintQueueAction)
+}
+
+function Get-STZRepairPrintStackAction {
+    return New-STZActionDefinition `
+        -Key '4' `
         -Title 'Repair Print Stack' `
+        -MenuLabel 'Repair Print Stack (reset queue / spooler)' `
         -Description 'Runs a simple print recovery routine by recycling the spooler and clearing the queue.' `
         -RequiresAdmin $true `
         -RebootRecommended $false `
@@ -103,6 +117,17 @@ function Repair-STZPrintStack {
         -Handler {
             Invoke-STZPrintQueueCleanup
         }
+}
 
-    Invoke-STZAction -Action $action
+function Repair-STZPrintStack {
+    Invoke-STZAction -Action (Get-STZRepairPrintStackAction)
+}
+
+function Get-STZPrintingMenuActions {
+    return @(
+        Get-STZPrintSpoolerStatusAction
+        Get-STZRestartPrintSpoolerAction
+        Get-STZClearPrintQueueAction
+        Get-STZRepairPrintStackAction
+    )
 }

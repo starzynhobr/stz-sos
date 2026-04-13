@@ -22,8 +22,12 @@ function Join-STZPath {
 
 function New-STZActionDefinition {
     param(
+        [string]$Key,
+
         [Parameter(Mandatory)]
         [string]$Title,
+
+        [string]$MenuLabel,
 
         [Parameter(Mandatory)]
         [string]$Description,
@@ -42,13 +46,85 @@ function New-STZActionDefinition {
     )
 
     return [pscustomobject]@{
+        Key               = $Key
         Title             = $Title
+        MenuLabel         = if ($MenuLabel) { $MenuLabel } else { $Title }
         Description       = $Description
         Handler           = $Handler
         RiskLevel         = $RiskLevel
+        Risk              = $RiskLevel
         RequiresAdmin     = $RequiresAdmin
         RebootRecommended = $RebootRecommended
         SuccessMessage    = $SuccessMessage
+    }
+}
+
+function Format-STZMenuLabel {
+    param(
+        [Parameter(Mandatory)]
+        [pscustomobject]$Action
+    )
+
+    $label = if ($Action.MenuLabel) { $Action.MenuLabel } else { $Action.Title }
+
+    if ($Action.RequiresAdmin) {
+        return "$label [admin]"
+    }
+
+    return $label
+}
+
+function Find-STZActionByKey {
+    param(
+        [Parameter(Mandatory)]
+        [object[]]$Actions,
+
+        [Parameter(Mandatory)]
+        [string]$Key
+    )
+
+    return $Actions | Where-Object { $_.Key -eq $Key } | Select-Object -First 1
+}
+
+function Show-STZActionMenu {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Title,
+
+        [Parameter(Mandatory)]
+        [string]$Subtitle,
+
+        [Parameter(Mandatory)]
+        [object[]]$Actions,
+
+        [string]$BackKey = 'Q',
+
+        [string]$BackLabel = 'Back'
+    )
+
+    while ($true) {
+        Show-STZSectionTitle -Title $Title -Subtitle $Subtitle
+
+        foreach ($action in $Actions) {
+            Write-STZMenuOption -Key $action.Key -Label (Format-STZMenuLabel -Action $action)
+        }
+
+        Write-STZMenuOption -Key $BackKey -Label $BackLabel
+        Write-Host ''
+
+        $selection = (Read-STZPrompt).Trim()
+        if ($selection -eq $BackKey) {
+            return
+        }
+
+        $action = Find-STZActionByKey -Actions $Actions -Key $selection
+        if ($action) {
+            Invoke-STZAction -Action $action
+            continue
+        }
+
+        Show-STZFriendlyError -Message "Invalid option in $Title."
+        Start-Sleep -Seconds 2
     }
 }
 

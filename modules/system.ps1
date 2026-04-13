@@ -1,6 +1,8 @@
-function Invoke-STZDiskCleanup {
-    $action = New-STZActionDefinition `
+function Get-STZDiskCleanupAction {
+    return New-STZActionDefinition `
+        -Key '1' `
         -Title 'Disk Cleanup' `
+        -MenuLabel 'Disk Cleanup (temp/cache purge)' `
         -Description 'Purges temporary files and cached data from standard Windows temp locations.' `
         -RequiresAdmin $true `
         -RebootRecommended $false `
@@ -10,8 +12,10 @@ function Invoke-STZDiskCleanup {
             Remove-Item -Path "$env:TEMP\*" -Recurse -Force -ErrorAction SilentlyContinue
             Remove-Item -Path "$env:WINDIR\Temp\*" -Recurse -Force -ErrorAction Stop
         }
+}
 
-    Invoke-STZAction -Action $action
+function Invoke-STZDiskCleanup {
+    Invoke-STZAction -Action (Get-STZDiskCleanupAction)
 }
 
 function Get-STZHardwareReport {
@@ -26,9 +30,11 @@ function Get-STZHardwareReport {
     }
 }
 
-function Show-STZHardwareReport {
-    $action = New-STZActionDefinition `
+function Get-STZHardwareReportAction {
+    return New-STZActionDefinition `
+        -Key '1' `
         -Title 'Hardware Report' `
+        -MenuLabel 'Hardware Report (CPU / RAM / GPU)' `
         -Description 'Collects a basic CPU, RAM, and GPU summary for the current machine.' `
         -RequiresAdmin $false `
         -RebootRecommended $false `
@@ -43,6 +49,8 @@ function Show-STZHardwareReport {
             Write-Host "$($script:STZUI.NeonColor) GPU:$($script:STZUI.TextColor) $($report.GPU)$($script:STZUI.Reset)"
             Write-Host "$($script:STZUI.MutedColor) -------------------$($script:STZUI.Reset)"
         }
+}
 
-    Invoke-STZAction -Action $action
+function Show-STZHardwareReport {
+    Invoke-STZAction -Action (Get-STZHardwareReportAction)
 }

@@ -113,14 +113,37 @@ function Show-STZActionMetadata {
         [pscustomobject]$Action
     )
 
-    $adminText = if ($Action.RequiresAdmin) { '[Admin Required]' } else { '[No Admin Required]' }
-    $rebootText = if ($Action.RebootRecommended) { '[Reboot Recommended]' } else { '[No Reboot Required]' }
-    $riskText = "[$($Action.RiskLevel) Risk]"
+    $badges = @()
+
+    if ($Action.RequiresAdmin) {
+        $badges += [pscustomobject]@{
+            Type = 'Admin'
+            Text = '[Admin Required]'
+        }
+    }
+
+    if ($Action.RebootRecommended) {
+        $badges += [pscustomobject]@{
+            Type = 'Reboot'
+            Text = '[Reboot Recommended]'
+        }
+    }
+
+    if ($Action.RiskLevel -in @('Medium', 'High')) {
+        $badges += [pscustomobject]@{
+            Type = 'Risk'
+            Text = "[$($Action.RiskLevel) Risk]"
+        }
+    }
+
+    if (-not $badges) {
+        return
+    }
 
     Write-Host "$($script:STZUI.MutedColor) Operational Metadata$($script:STZUI.Reset)"
-    Write-STZBadge -Type 'Admin' -Text $adminText
-    Write-STZBadge -Type 'Reboot' -Text $rebootText
-    Write-STZBadge -Type 'Risk' -Text $riskText
+    foreach ($badge in $badges) {
+        Write-STZBadge -Type $badge.Type -Text $badge.Text
+    }
     Write-Host ''
 }
 
@@ -171,123 +194,27 @@ function Show-STZMainMenu {
 }
 
 function Show-STZSystemMenu {
-    while ($true) {
-        Show-STZSectionTitle -Title 'System' -Subtitle 'Core operating system maintenance routines.'
-        Write-STZMenuOption -Key '1' -Label 'Disk Cleanup (temp/cache purge)'
-        Write-STZMenuOption -Key '2' -Label 'Back'
-        Write-Host ''
-
-        switch ((Read-STZPrompt).Trim()) {
-            '1' { Invoke-STZDiskCleanup }
-            '2' { return }
-            default {
-                Show-STZFriendlyError -Message 'Invalid option in System.'
-                Start-Sleep -Seconds 2
-            }
-        }
-    }
+    Show-STZActionMenu -Title 'System' -Subtitle 'Core operating system maintenance routines.' -Actions @(Get-STZDiskCleanupAction) -BackKey '2'
 }
 
 function Show-STZNetworkMenu {
-    while ($true) {
-        Show-STZSectionTitle -Title 'Network' -Subtitle 'Fast recovery routines for network connectivity.'
-        Write-STZMenuOption -Key '1' -Label 'Quick Network Repair (flush DNS / renew IP)'
-        Write-STZMenuOption -Key '2' -Label 'Deep Network Repair (reset Winsock / TCP-IP)'
-        Write-STZMenuOption -Key '3' -Label 'Show Network Report (IP / DNS / gateway)'
-        Write-STZMenuOption -Key '4' -Label 'Test Connectivity (gateway / DNS / internet)'
-        Write-STZMenuOption -Key '5' -Label 'Back'
-        Write-Host ''
-
-        switch ((Read-STZPrompt).Trim()) {
-            '1' { Invoke-STZQuickNetworkRepair }
-            '2' { Invoke-STZDeepNetworkRepair }
-            '3' { Show-STZNetworkReport }
-            '4' { Test-STZConnectivity }
-            '5' { return }
-            default {
-                Show-STZFriendlyError -Message 'Invalid option in Network.'
-                Start-Sleep -Seconds 2
-            }
-        }
-    }
+    Show-STZActionMenu -Title 'Network' -Subtitle 'Fast recovery routines for network connectivity.' -Actions (Get-STZNetworkMenuActions) -BackKey '5'
 }
 
 function Show-STZDevicesMenu {
-    while ($true) {
-        Show-STZSectionTitle -Title 'Devices' -Subtitle 'Reserved structure for future device support.'
-        Write-STZMenuOption -Key '1' -Label 'Show current device placeholders'
-        Write-STZMenuOption -Key '2' -Label 'Back'
-        Write-Host ''
-
-        switch ((Read-STZPrompt).Trim()) {
-            '1' { Show-STZDevicesPlaceholder }
-            '2' { return }
-            default {
-                Show-STZFriendlyError -Message 'Invalid option in Devices.'
-                Start-Sleep -Seconds 2
-            }
-        }
-    }
+    Show-STZActionMenu -Title 'Devices' -Subtitle 'Basic diagnosis and recovery for Plug and Play and HID devices.' -Actions (Get-STZDevicesMenuActions) -BackKey '5'
 }
 
 function Show-STZPrintingMenu {
-    while ($true) {
-        Show-STZSectionTitle -Title 'Printing' -Subtitle 'Maintenance and recovery routines for Windows printing services.'
-        Write-STZMenuOption -Key '1' -Label 'Show Spooler Status (service / startup type)'
-        Write-STZMenuOption -Key '2' -Label 'Restart Print Spooler (stop / start service)'
-        Write-STZMenuOption -Key '3' -Label 'Clear Print Queue (purge pending jobs)'
-        Write-STZMenuOption -Key '4' -Label 'Repair Print Stack (reset queue / spooler)'
-        Write-STZMenuOption -Key '5' -Label 'Back'
-        Write-Host ''
-
-        switch ((Read-STZPrompt).Trim()) {
-            '1' { Show-STZPrintSpoolerStatus }
-            '2' { Restart-STZPrintSpooler }
-            '3' { Clear-STZPrintQueue }
-            '4' { Repair-STZPrintStack }
-            '5' { return }
-            default {
-                Show-STZFriendlyError -Message 'Invalid option in Printing.'
-                Start-Sleep -Seconds 2
-            }
-        }
-    }
+    Show-STZActionMenu -Title 'Printing' -Subtitle 'Maintenance and recovery routines for Windows printing services.' -Actions (Get-STZPrintingMenuActions) -BackKey '5'
 }
 
 function Show-STZTweaksMenu {
-    while ($true) {
-        Show-STZSectionTitle -Title 'Tweaks' -Subtitle 'Reserved space for future Windows adjustments.'
-        Write-STZMenuOption -Key '1' -Label 'Show current tweaks placeholders'
-        Write-STZMenuOption -Key '2' -Label 'Back'
-        Write-Host ''
-
-        switch ((Read-STZPrompt).Trim()) {
-            '1' { Show-STZTweaksPlaceholder }
-            '2' { return }
-            default {
-                Show-STZFriendlyError -Message 'Invalid option in Tweaks.'
-                Start-Sleep -Seconds 2
-            }
-        }
-    }
+    Show-STZActionMenu -Title 'Tweaks' -Subtitle 'Safe and reversible Windows convenience tweaks.' -Actions (Get-STZTweaksMenuActions) -BackKey '6'
 }
 
 function Show-STZDiagnosticsMenu {
-    while ($true) {
-        Show-STZSectionTitle -Title 'Diagnostics' -Subtitle 'Basic hardware telemetry and reporting.'
-        Write-STZMenuOption -Key '1' -Label 'Hardware report (CPU/RAM/GPU)'
-        Write-STZMenuOption -Key '2' -Label 'Back'
-        Write-Host ''
-
-        switch ((Read-STZPrompt).Trim()) {
-            '1' { Show-STZHardwareReport }
-            '2' { return }
-            default {
-                Show-STZFriendlyError -Message 'Invalid option in Diagnostics.'
-                Start-Sleep -Seconds 2
-            }
-        }
-    }
+    Show-STZActionMenu -Title 'Diagnostics' -Subtitle 'Basic hardware telemetry and reporting.' -Actions (Get-STZDiagnosticsMenuActions) -BackKey '5'
 }
 
 function Start-STZSOS {
