@@ -52,7 +52,10 @@ function Resolve-STZDependencies {
         'modules\devices.ps1',
         'modules\printing.ps1',
         'modules\tweaks.ps1',
-        'modules\diagnostics.ps1'
+        'modules\performance.ps1',
+        'modules\diagnostics.ps1',
+        'modules\quickfixes.ps1',
+        'modules\apps.ps1'
     )
 
     $root = Get-STZBootstrapRoot

@@ -123,11 +123,31 @@ function Repair-STZPrintStack {
     Invoke-STZAction -Action (Get-STZRepairPrintStackAction)
 }
 
+function Get-STZOpenPrintersSettingsAction {
+    return New-STZActionDefinition `
+        -Key '5' `
+        -Title 'Open Printers Settings' `
+        -MenuLabel 'Open Printers Settings (system printers page)' `
+        -Description 'Opens the Windows printers settings page directly.' `
+        -RequiresAdmin $false `
+        -RebootRecommended $false `
+        -RiskLevel 'Low' `
+        -SuccessMessage 'Printers settings opened successfully.' `
+        -Handler {
+            Start-Process -FilePath 'ms-settings:printers' -ErrorAction Stop | Out-Null
+        }
+}
+
+function Open-STZPrintersSettings {
+    Invoke-STZAction -Action (Get-STZOpenPrintersSettingsAction)
+}
+
 function Get-STZPrintingMenuActions {
     return @(
         Get-STZPrintSpoolerStatusAction
         Get-STZRestartPrintSpoolerAction
         Get-STZClearPrintQueueAction
         Get-STZRepairPrintStackAction
+        Get-STZOpenPrintersSettingsAction
     )
 }

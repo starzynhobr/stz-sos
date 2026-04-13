@@ -40,6 +40,18 @@ function Set-STZFileExtensionsVisibility {
     Set-ItemProperty -Path $advancedKey -Name 'HideFileExt' -Value $hideValue -Type DWord -ErrorAction Stop
 }
 
+function Set-STZHiddenFilesVisibility {
+    param(
+        [Parameter(Mandatory)]
+        [bool]$Visible
+    )
+
+    $advancedKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'
+    $hiddenValue = if ($Visible) { 1 } else { 2 }
+
+    Set-ItemProperty -Path $advancedKey -Name 'Hidden' -Value $hiddenValue -Type DWord -ErrorAction Stop
+}
+
 function Get-STZEnableClassicContextMenuAction {
     return New-STZActionDefinition `
         -Key '1' `
@@ -139,6 +151,46 @@ function Hide-STZFileExtensions {
     Invoke-STZAction -Action (Get-STZHideFileExtensionsAction)
 }
 
+function Get-STZShowHiddenFilesAction {
+    return New-STZActionDefinition `
+        -Key '6' `
+        -Title 'Show Hidden Files' `
+        -MenuLabel 'Show Hidden Files (enable hidden items)' `
+        -Description 'Enables hidden files and folders visibility in File Explorer and refreshes Explorer.' `
+        -RequiresAdmin $false `
+        -RebootRecommended $false `
+        -RiskLevel 'Low' `
+        -SuccessMessage 'Hidden files are now visible.' `
+        -Handler {
+            Set-STZHiddenFilesVisibility -Visible $true
+            Restart-STZExplorerCore
+        }
+}
+
+function Show-STZHiddenFiles {
+    Invoke-STZAction -Action (Get-STZShowHiddenFilesAction)
+}
+
+function Get-STZHideHiddenFilesAction {
+    return New-STZActionDefinition `
+        -Key '7' `
+        -Title 'Hide Hidden Files' `
+        -MenuLabel 'Hide Hidden Files (restore default behavior)' `
+        -Description 'Restores the default File Explorer behavior for hidden files and folders.' `
+        -RequiresAdmin $false `
+        -RebootRecommended $false `
+        -RiskLevel 'Low' `
+        -SuccessMessage 'Hidden files are now hidden.' `
+        -Handler {
+            Set-STZHiddenFilesVisibility -Visible $false
+            Restart-STZExplorerCore
+        }
+}
+
+function Hide-STZHiddenFiles {
+    Invoke-STZAction -Action (Get-STZHideHiddenFilesAction)
+}
+
 function Get-STZTweaksMenuActions {
     return @(
         Get-STZEnableClassicContextMenuAction
@@ -146,5 +198,7 @@ function Get-STZTweaksMenuActions {
         Get-STZRestartExplorerAction
         Get-STZShowFileExtensionsAction
         Get-STZHideFileExtensionsAction
+        Get-STZShowHiddenFilesAction
+        Get-STZHideHiddenFilesAction
     )
 }

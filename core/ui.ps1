@@ -170,7 +170,10 @@ function Show-STZMainMenu {
         Write-STZMenuOption -Key '3' -Label 'Devices'
         Write-STZMenuOption -Key '4' -Label 'Printing'
         Write-STZMenuOption -Key '5' -Label 'Tweaks'
-        Write-STZMenuOption -Key '6' -Label 'Diagnostics'
+        Write-STZMenuOption -Key '6' -Label 'Performance'
+        Write-STZMenuOption -Key '7' -Label 'Diagnostics'
+        Write-STZMenuOption -Key '8' -Label 'Quick Fixes'
+        Write-STZMenuOption -Key '9' -Label 'Apps'
         Write-STZMenuOption -Key 'Q' -Label 'Exit'
         Write-Host ''
 
@@ -180,7 +183,10 @@ function Show-STZMainMenu {
             '3' { Show-STZDevicesMenu }
             '4' { Show-STZPrintingMenu }
             '5' { Show-STZTweaksMenu }
-            '6' { Show-STZDiagnosticsMenu }
+            '6' { Show-STZPerformanceMenu }
+            '7' { Show-STZDiagnosticsMenu }
+            '8' { Show-STZQuickFixesMenu }
+            '9' { Show-STZAppsMenu }
             { $_ -in 'Q', 'q' } {
                 Show-STZLoading -Text 'Closing session'
                 return
@@ -194,27 +200,35 @@ function Show-STZMainMenu {
 }
 
 function Show-STZSystemMenu {
-    Show-STZActionMenu -Title 'System' -Subtitle 'Core operating system maintenance routines.' -Actions @(Get-STZDiskCleanupAction) -BackKey '2'
+    Show-STZActionMenu -Title 'System' -Subtitle 'Core operating system maintenance routines.' -Actions (Get-STZSystemMenuActions) -BackKey '7'
 }
 
 function Show-STZNetworkMenu {
-    Show-STZActionMenu -Title 'Network' -Subtitle 'Fast recovery routines for network connectivity.' -Actions (Get-STZNetworkMenuActions) -BackKey '5'
+    Show-STZActionMenu -Title 'Network' -Subtitle 'Fast recovery routines for network connectivity.' -Actions (Get-STZNetworkMenuActions) -BackKey '6'
 }
 
 function Show-STZDevicesMenu {
-    Show-STZActionMenu -Title 'Devices' -Subtitle 'Basic diagnosis and recovery for Plug and Play and HID devices.' -Actions (Get-STZDevicesMenuActions) -BackKey '5'
+    Show-STZActionMenu -Title 'Devices' -Subtitle 'Basic diagnosis and recovery for Plug and Play and HID devices.' -Actions (Get-STZDevicesMenuActions) -BackKey '6'
 }
 
 function Show-STZPrintingMenu {
-    Show-STZActionMenu -Title 'Printing' -Subtitle 'Maintenance and recovery routines for Windows printing services.' -Actions (Get-STZPrintingMenuActions) -BackKey '5'
+    Show-STZActionMenu -Title 'Printing' -Subtitle 'Maintenance and recovery routines for Windows printing services.' -Actions (Get-STZPrintingMenuActions) -BackKey '6'
 }
 
 function Show-STZTweaksMenu {
-    Show-STZActionMenu -Title 'Tweaks' -Subtitle 'Safe and reversible Windows convenience tweaks.' -Actions (Get-STZTweaksMenuActions) -BackKey '6'
+    Show-STZActionMenu -Title 'Tweaks' -Subtitle 'Safe and reversible Windows convenience tweaks.' -Actions (Get-STZTweaksMenuActions) -BackKey '8'
+}
+
+function Show-STZPerformanceMenu {
+    Show-STZActionMenu -Title 'Performance' -Subtitle 'Conservative Windows responsiveness and debloat controls.' -Actions (Get-STZPerformanceMenuActions) -BackKey '8'
 }
 
 function Show-STZDiagnosticsMenu {
-    Show-STZActionMenu -Title 'Diagnostics' -Subtitle 'Basic hardware telemetry and reporting.' -Actions (Get-STZDiagnosticsMenuActions) -BackKey '5'
+    Show-STZActionMenu -Title 'Diagnostics' -Subtitle 'Basic hardware telemetry and reporting.' -Actions (Get-STZDiagnosticsMenuActions) -BackKey '6'
+}
+
+function Show-STZQuickFixesMenu {
+    Show-STZActionMenu -Title 'Quick Fixes' -Subtitle 'Fast-access recovery actions for common Windows problems.' -Actions (Get-STZQuickFixesMenuActions) -BackKey '6'
 }
 
 function Start-STZSOS {

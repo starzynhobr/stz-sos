@@ -42,6 +42,23 @@ function Test-STZDnsResolution {
     }
 }
 
+function Reset-STZProxySettingsCore {
+    $internetSettingsKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings'
+
+    Show-STZLoading -Text 'Resetting WinHTTP proxy'
+    netsh winhttp reset proxy | Out-Null
+
+    Show-STZLoading -Text 'Clearing user proxy settings'
+    Set-STZRegistryDwordValue -Path $internetSettingsKey -Name 'ProxyEnable' -Value 0
+    Set-STZRegistryStringValue -Path $internetSettingsKey -Name 'ProxyServer' -Value ''
+    Set-STZRegistryStringValue -Path $internetSettingsKey -Name 'ProxyOverride' -Value ''
+    Set-STZRegistryDwordValue -Path $internetSettingsKey -Name 'AutoDetect' -Value 1
+
+    if (Get-ItemProperty -Path $internetSettingsKey -Name 'AutoConfigURL' -ErrorAction SilentlyContinue) {
+        Remove-ItemProperty -Path $internetSettingsKey -Name 'AutoConfigURL' -ErrorAction Stop
+    }
+}
+
 function Get-STZQuickNetworkRepairAction {
     return New-STZActionDefinition `
         -Key '1' `
@@ -194,11 +211,31 @@ function Test-STZConnectivity {
     Invoke-STZAction -Action (Get-STZConnectivityTestAction)
 }
 
+function Get-STZResetProxySettingsAction {
+    return New-STZActionDefinition `
+        -Key '5' `
+        -Title 'Reset Proxy Settings' `
+        -MenuLabel 'Reset Proxy Settings (clear WinHTTP / user proxy)' `
+        -Description 'Clears common WinHTTP and current-user proxy settings to recover from proxy misconfiguration.' `
+        -RequiresAdmin $true `
+        -RebootRecommended $false `
+        -RiskLevel 'Low' `
+        -SuccessMessage 'Proxy settings reset successfully.' `
+        -Handler {
+            Reset-STZProxySettingsCore
+        }
+}
+
+function Reset-STZProxySettings {
+    Invoke-STZAction -Action (Get-STZResetProxySettingsAction)
+}
+
 function Get-STZNetworkMenuActions {
     return @(
         Get-STZQuickNetworkRepairAction
         Get-STZDeepNetworkRepairAction
         Get-STZNetworkReportAction
         Get-STZConnectivityTestAction
+        Get-STZResetProxySettingsAction
     )
 }

@@ -49,6 +49,33 @@ function Get-STZMouseRelatedDevices {
     }
 }
 
+function Get-STZUsbDevices {
+    if (Get-Command Get-PnpDevice -ErrorAction SilentlyContinue) {
+        return Get-PnpDevice -PresentOnly -ErrorAction Stop | Where-Object {
+            $_.InstanceId -like 'USB*' -or
+            $_.Class -eq 'USB'
+        }
+    }
+
+    return Get-CimInstance Win32_PnPEntity -ErrorAction Stop | Where-Object {
+        $_.PNPDeviceID -like 'USB*' -or
+        $_.PNPClass -eq 'USB'
+    } | Select-Object @(
+        @{
+            Name = 'FriendlyName'
+            Expression = { $_.Name }
+        },
+        @{
+            Name = 'Class'
+            Expression = { $_.PNPClass }
+        },
+        @{
+            Name = 'Status'
+            Expression = { if ($_.ConfigManagerErrorCode -eq 0) { 'OK' } else { 'Error' } }
+        }
+    )
+}
+
 function Get-STZDeviceRescanAction {
     return New-STZActionDefinition `
         -Key '1' `
@@ -165,11 +192,47 @@ function Open-STZDeviceManager {
     Invoke-STZAction -Action (Get-STZOpenDeviceManagerAction)
 }
 
+function Get-STZShowUsbDevicesAction {
+    return New-STZActionDefinition `
+        -Key '5' `
+        -Title 'Show USB Devices' `
+        -MenuLabel 'Show USB Devices (connected USB list)' `
+        -Description 'Displays a concise list of currently present USB-related devices.' `
+        -RequiresAdmin $false `
+        -RebootRecommended $false `
+        -RiskLevel 'Low' `
+        -SuccessMessage 'USB device list generated successfully.' `
+        -Handler {
+            $devices = Get-STZUsbDevices | Select-Object -First 15
+
+            Write-Host "`n$($script:STZUI.MutedColor) --- USB DEVICES ---$($script:STZUI.Reset)"
+
+            if (-not $devices) {
+                Write-Host "$($script:STZUI.WarningColor) No USB devices were found.$($script:STZUI.Reset)"
+                return
+            }
+
+            foreach ($device in $devices) {
+                $name = if ($device.FriendlyName) { $device.FriendlyName } elseif ($device.Name) { $device.Name } else { 'Unknown device' }
+                $status = if ($device.Status) { $device.Status } else { 'Unknown' }
+
+                Write-Host "$($script:STZUI.NeonColor) Device:$($script:STZUI.TextColor) $name$($script:STZUI.Reset)"
+                Write-Host "$($script:STZUI.NeonColor) Status:$($script:STZUI.TextColor) $status$($script:STZUI.Reset)"
+                Write-Host "$($script:STZUI.MutedColor) ------------------$($script:STZUI.Reset)"
+            }
+        }
+}
+
+function Show-STZUsbDevices {
+    Invoke-STZAction -Action (Get-STZShowUsbDevicesAction)
+}
+
 function Get-STZDevicesMenuActions {
     return @(
         Get-STZDeviceRescanAction
         Get-STZDevicesWithErrorsAction
         Get-STZBasicMouseRecoveryAction
         Get-STZOpenDeviceManagerAction
+        Get-STZShowUsbDevicesAction
     )
 }

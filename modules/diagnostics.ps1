@@ -199,11 +199,33 @@ function Show-STZRecentIssues {
     Invoke-STZAction -Action (Get-STZRecentIssuesAction)
 }
 
+function Get-STZOpenReportFolderAction {
+    return New-STZActionDefinition `
+        -Key '5' `
+        -Title 'Open Report Folder' `
+        -MenuLabel 'Open Report Folder (open reports directory)' `
+        -Description 'Opens the folder used to store exported diagnostic reports.' `
+        -RequiresAdmin $false `
+        -RebootRecommended $false `
+        -RiskLevel 'Low' `
+        -SuccessMessage 'Report folder opened successfully.' `
+        -Handler {
+            $reportPath = Get-STZDiagnosticReportPath
+            $reportFolder = Split-Path -Path $reportPath -Parent
+            Start-Process -FilePath 'explorer.exe' -ArgumentList $reportFolder -ErrorAction Stop | Out-Null
+        }
+}
+
+function Open-STZDiagnosticReportFolder {
+    Invoke-STZAction -Action (Get-STZOpenReportFolderAction)
+}
+
 function Get-STZDiagnosticsMenuActions {
     return @(
         Get-STZDiagnosticsHardwareReportAction
         Get-STZSystemStatusAction
         Get-STZExportDiagnosticReportAction
         Get-STZRecentIssuesAction
+        Get-STZOpenReportFolderAction
     )
 }
