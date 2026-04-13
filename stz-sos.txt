@@ -1,0 +1,102 @@
+$Host.UI.RawUI.WindowTitle = "STZ Labs - Terminal"
+
+# ==========================================
+# ENGINE DE CORES (ANSI RGB)
+# ==========================================
+$ESC = [char]27
+$NEON_PURPLE = "$ESC[38;2;157;78;221m"
+$CYAN        = "$ESC[38;2;0;255;255m"
+$PINK        = "$ESC[38;2;255;0;128m"
+$GRAY        = "$ESC[38;2;100;100;100m"
+$WHITE       = "$ESC[38;2;255;255;255m"
+$RESET       = "$ESC[0m"
+
+# ==========================================
+# EFEITOS VISUAIS
+# ==========================================
+function Show-Loading($text) {
+    Write-Host "`n${GRAY}[*] ${text} ${RESET}" -NoNewline
+    for ($i = 0; $i -lt 3; $i++) {
+        Start-Sleep -Milliseconds 400
+        Write-Host "${PINK}.${RESET}" -NoNewline
+    }
+    Write-Host " ${CYAN}OK${RESET}"
+    Start-Sleep -Milliseconds 500
+}
+
+function Show-Header {
+    Clear-Host
+    Write-Host "${NEON_PURPLE}   _____ _______ ______    ${PINK} _               ____   _____ ${RESET}"
+    Write-Host "${NEON_PURPLE}  / ____|__   __|___  /    ${PINK}| |        /\   |  _ \ / ____|${RESET}"
+    Write-Host "${NEON_PURPLE} | (___    | |     / /     ${PINK}| |       /  \  | |_) | (___  ${RESET}"
+    Write-Host "${NEON_PURPLE}  \___ \   | |    / /      ${PINK}| |      / /\ \ |  _ < \___ \ ${RESET}"
+    Write-Host "${NEON_PURPLE}  ____) |  | |   / /__     ${PINK}| |____ / ____ \| |_) |____) |${RESET}"
+    Write-Host "${NEON_PURPLE} |_____/   |_|  /_____|    ${PINK}|______/_/    \_\____/|_____/ ${RESET}"
+    Write-Host "${GRAY} =======================================================${RESET}"
+    Write-Host "${CYAN}        C O R E   S Y S T E M   U T I L I T Y           ${RESET}"
+    Write-Host "${GRAY} =======================================================`n${RESET}"
+}
+
+# ==========================================
+# LOOP PRINCIPAL
+# ==========================================
+while ($true) {
+    Show-Header
+
+    Write-Host "${WHITE} Selecione um modulo de execucao:${RESET}`n"
+    Write-Host "${GRAY} [${CYAN}1${GRAY}]${WHITE} Otimizacao de Disco (Limpar Temp/Cache)"
+    Write-Host "${GRAY} [${CYAN}2${GRAY}]${WHITE} Reset de Interface de Rede (DNS/IP)"
+    Write-Host "${GRAY} [${CYAN}3${GRAY}]${WHITE} Relatorio de Hardware (CPU/RAM/GPU)"
+    Write-Host "${GRAY} [${PINK}Q${GRAY}]${WHITE} Desconectar`n"
+
+    $choice = Read-Host "${NEON_PURPLE} stz-cli> ${RESET}"
+
+    switch ($choice) {
+        "1" {
+            Show-Loading "Limpando arquivos temporarios"
+            Remove-Item -Path "$env:TEMP\*" -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item -Path "$env:WINDIR\Temp\*" -Recurse -Force -ErrorAction SilentlyContinue
+            Write-Host "`n${CYAN} [✓] Cache do sistema purgado com sucesso.${RESET}"
+            Pause
+        }
+
+        "2" {
+            Show-Loading "Purgando tabela DNS"
+            ipconfig /flushdns | Out-Null
+            Show-Loading "Renovando concessoes de IP"
+            ipconfig /release | Out-Null
+            ipconfig /renew | Out-Null
+            Write-Host "`n${CYAN} [✓] Protocolos de rede reestabelecidos.${RESET}"
+            Pause
+        }
+
+        "3" {
+            Show-Loading "Buscando telemetria de hardware"
+            $cpu = Get-CimInstance Win32_Processor | Select-Object -ExpandProperty Name
+            $ram = [math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB)
+            $gpu = Get-CimInstance Win32_VideoController | Select-Object -ExpandProperty Name
+
+            Write-Host "`n${GRAY} --- SPEC REPORT ---${RESET}"
+            Write-Host "${NEON_PURPLE} CPU:${WHITE} $cpu${RESET}"
+            Write-Host "${NEON_PURPLE} RAM:${WHITE} $ram GB${RESET}"
+            Write-Host "${NEON_PURPLE} GPU:${WHITE} $gpu${RESET}"
+            Write-Host "${GRAY} -------------------${RESET}"
+            Pause
+        }
+
+        "q" {
+            Show-Loading "Encerrando sessao"
+            break
+        }
+
+        "Q" {
+            Show-Loading "Encerrando sessao"
+            break
+        }
+
+        default {
+            Write-Host "`n${PINK} [!] Modulo nao reconhecido. Tente novamente.${RESET}"
+            Start-Sleep -Seconds 2
+        }
+    }
+}
