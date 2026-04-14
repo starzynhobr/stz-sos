@@ -1,47 +1,3 @@
-function Test-STZWingetAvailability {
-    return $null -ne (Get-Command winget -ErrorAction SilentlyContinue)
-}
-
-function Assert-STZWingetAvailability {
-    if (-not (Test-STZWingetAvailability)) {
-        throw 'WinGet is not available on this system. Install App Installer from Microsoft Store and try again.'
-    }
-}
-
-function Invoke-STZWingetCommand {
-    param(
-        [Parameter(Mandatory)]
-        [string[]]$Arguments,
-
-        [Parameter(Mandatory)]
-        [string]$ProgressText,
-
-        [string]$FailureMessage = 'WinGet command failed.'
-    )
-
-    Assert-STZWingetAvailability
-    Show-STZLoading -Text $ProgressText
-    & winget @Arguments
-    if ($LASTEXITCODE -ne 0) {
-        throw "$FailureMessage Exit code: $LASTEXITCODE."
-    }
-}
-
-function Install-STZWingetPackage {
-    param(
-        [Parameter(Mandatory)]
-        [string]$PackageId,
-
-        [Parameter(Mandatory)]
-        [string]$DisplayName
-    )
-
-    Invoke-STZWingetCommand `
-        -Arguments @('install', '--id', $PackageId, '-e', '--accept-package-agreements', '--accept-source-agreements') `
-        -ProgressText "Installing $DisplayName" `
-        -FailureMessage "Failed to install $DisplayName."
-}
-
 function Get-STZAppsCatalog {
     return @(
         [pscustomobject]@{ DisplayName = 'Google Chrome'; PackageId = 'Google.Chrome'; Category = 'Browsers'; Description = 'Installs Google Chrome via WinGet.'; RequiresAdmin = $false }
@@ -98,22 +54,29 @@ function ConvertTo-STZAppInstallAction {
         [int]$Index
     )
 
+    $displayName = $App.DisplayName
+    $packageId = $App.PackageId
+    $category = $App.Category
+    $description = $App.Description
+    $requiresAdmin = $App.RequiresAdmin
+    $installWingetPackage = ${function:Install-STZWingetPackage}
+
     $action = New-STZActionDefinition `
         -Key $Index.ToString() `
-        -Title $App.DisplayName `
-        -MenuLabel $App.DisplayName `
-        -Description $App.Description `
-        -RequiresAdmin $App.RequiresAdmin `
+        -Title $displayName `
+        -MenuLabel $displayName `
+        -Description $description `
+        -RequiresAdmin $requiresAdmin `
         -RebootRecommended $false `
         -RiskLevel 'Low' `
-        -SuccessMessage "$($App.DisplayName) installed successfully." `
-        -Handler {
-            Install-STZWingetPackage -PackageId $App.PackageId -DisplayName $App.DisplayName
-        }
+        -SuccessMessage "$displayName installed successfully." `
+        -Handler ({
+            & $installWingetPackage -PackageId $packageId -DisplayName $displayName
+        }.GetNewClosure())
 
-    $action | Add-Member -NotePropertyName 'DisplayName' -NotePropertyValue $App.DisplayName -Force
-    $action | Add-Member -NotePropertyName 'PackageId' -NotePropertyValue $App.PackageId -Force
-    $action | Add-Member -NotePropertyName 'Category' -NotePropertyValue $App.Category -Force
+    $action | Add-Member -NotePropertyName 'DisplayName' -NotePropertyValue $displayName -Force
+    $action | Add-Member -NotePropertyName 'PackageId' -NotePropertyValue $packageId -Force
+    $action | Add-Member -NotePropertyName 'Category' -NotePropertyValue $category -Force
     return $action
 }
 

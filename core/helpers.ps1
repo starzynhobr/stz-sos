@@ -2,6 +2,54 @@ function Wait-STZPause {
     [void](Read-Host "`n$($script:STZUI.PromptColor) press ENTER to continue $($script:STZUI.Reset)")
 }
 
+function Test-STZWingetAvailability {
+    return $null -ne (Get-Command winget -ErrorAction SilentlyContinue)
+}
+
+function Assert-STZWingetAvailability {
+    if (-not (Test-STZWingetAvailability)) {
+        throw 'WinGet is not available on this system. Install App Installer from Microsoft Store and try again.'
+    }
+}
+
+function Invoke-STZWingetCommand {
+    param(
+        [Parameter(Mandatory)]
+        [string[]]$Arguments,
+
+        [Parameter(Mandatory)]
+        [string]$ProgressText,
+
+        [string]$FailureMessage = 'WinGet command failed.'
+    )
+
+    Assert-STZWingetAvailability
+    Show-STZLoading -Text $ProgressText
+    & winget @Arguments
+    if ($LASTEXITCODE -ne 0) {
+        throw "$FailureMessage Exit code: $LASTEXITCODE."
+    }
+}
+
+function Install-STZWingetPackage {
+    param(
+        [Parameter(Mandatory)]
+        [string]$PackageId,
+
+        [Parameter(Mandatory)]
+        [string]$DisplayName
+    )
+
+    if ([string]::IsNullOrWhiteSpace($PackageId)) {
+        throw "No valid WinGet package ID was resolved for $DisplayName."
+    }
+
+    Invoke-STZWingetCommand `
+        -Arguments @('install', '--id', $PackageId, '-e', '--accept-package-agreements', '--accept-source-agreements') `
+        -ProgressText "Installing $DisplayName" `
+        -FailureMessage "Failed to install $DisplayName."
+}
+
 function Test-STZAdministrator {
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
     $principal = New-Object Security.Principal.WindowsPrincipal($identity)
